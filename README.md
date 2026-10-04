@@ -8,6 +8,12 @@
 
 Give it articles and two hosts, Claire and Marc, discuss them. Or give it your own text and it is read as is, by one or two voices.
 
+🎧 **Listen to an example**: [a 4-minute episode on AI and software testing](assets/example/matinale-2026-10-04.mp3) ([script](assets/example/matinale-2026-10-04.script.md)), made with a single command from [an issue of Joe Colantonio's newsletter](https://www.linkedin.com/pulse/playwright-mcp-vs-cli-mutation-testing-ai-agents-blind-joe-colantonio-uomme). I love it, but I don't always have time to read it:
+
+```bash
+uv run podcast create newsletter.md
+```
+
 Two ways to run it:
 
 - **With cloud services (recommended)**: Gemini writes the show, ElevenLabs voices it. Studio-quality voices, an episode in about a minute. You need two API keys.
