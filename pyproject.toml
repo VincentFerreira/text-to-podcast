@@ -1,0 +1,69 @@
+[project]
+name = "podcast-gen"
+version = "0.1.0"
+description = "Turn a text into a French 'morning edition' podcast, one or two voices, fully local on CPU"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [{ name = "Vincent Ferreira" }]
+requires-python = ">=3.10,<3.14"
+keywords = ["tts", "text-to-speech", "podcast", "french", "onnx", "piper", "supertonic", "kokoro"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: French",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+dependencies = [
+    "supertonic>=1.0",
+    "kokoro-onnx>=0.4",
+    "soundfile>=0.12",
+    "numpy>=1.26",
+    "num2words>=0.5.13",
+    "typer>=0.12",
+    "rich>=13",
+    "piper-tts>=1.3",
+    "soxr>=0.4",
+    "pyloudnorm>=0.1.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/VincentFerreira/podcast-gen"
+Issues = "https://github.com/VincentFerreira/podcast-gen/issues"
+Changelog = "https://github.com/VincentFerreira/podcast-gen/blob/main/CHANGELOG.md"
+
+[project.scripts]
+podcast = "podcast_gen.cli:app"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "pre-commit>=3"]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/podcast_gen"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not slow'"
+markers = ["slow: end-to-end tests that download models and synthesize audio"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"]  # typer declares CLI options as default arguments
+
+[tool.ruff.lint.per-file-ignores]
+"src/podcast_gen/cli.py" = ["UP045"]  # typer needs Optional[...] on Python 3.10
