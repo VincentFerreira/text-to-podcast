@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## What this is
 
-`podcast-gen` turns texts into a **French "morning show" podcast**, fully local on CPU:
+`text-to-podcast` turns texts into a **French "morning show" podcast**, fully local on CPU:
 - `podcast create` writes a two-host conversation (Claire and Marc) from articles with a local LLM (Ollama, `ministral-3:3b`), then voices it;
 - `podcast dialogue` voices a tagged script, or lets the hosts take turns on the `##` sections;
 - `podcast generate` reads a text with a single voice.
@@ -24,7 +24,7 @@ uv run podcast dialogue samples/fr/dialogue_short.md -o out/test_dialogue.mp3   
 
 Generated audio goes to `out/` (git-ignored). Always run ruff and pytest before committing.
 
-## Architecture (`src/podcast_gen/`)
+## Architecture (`src/text_to_podcast/`)
 
 ```
 sources -> writer (LLM) -> tagged script -> dialogue.build_dialogue_edition -> text normalization
@@ -41,7 +41,7 @@ sources -> writer (LLM) -> tagged script -> dialogue.build_dialogue_edition -> t
 | `text.py` | Language-independent sentence splitting and chunking (at most 300 characters per chunk). |
 | `mix.py` | Resampling to 44.1 kHz, per-voice leveling (-20 LUFS), trimming of engine silence, per-engine EQ, shared bus, -16 LUFS. |
 | `audio.py` | Single-voice export, jingle and auto-ducked music bed. |
-| `engines/` | `supertonic_engine`, `piper_engine`, `kokoro_engine`, all following the `TTSEngine` protocol (`base.py`). Models download lazily to `~/.cache/podcast_gen` or the Hugging Face cache. |
+| `engines/` | `supertonic_engine`, `piper_engine`, `kokoro_engine`, all following the `TTSEngine` protocol (`base.py`). Models download lazily to `~/.cache/text_to_podcast` or the Hugging Face cache. |
 | `locales/fr/` | **All French lives here**: `normalize.py` (numbers, dates, currencies…), `phrases.py` (greeting, transitions, handoffs, outro), `prompts.py` (LLM prompts, tones, audiences, `WORDS_PER_MINUTE = 160`). |
 
 ## Conventions

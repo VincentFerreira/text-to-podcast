@@ -1,5 +1,5 @@
 [project]
-name = "podcast-gen"
+name = "text-to-podcast"
 version = "0.2.0"
 description = "Turn a text into a French 'morning edition' podcast, one or two voices, fully local on CPU"
 readme = "README.md"
@@ -36,12 +36,12 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/VincentFerreira/podcast-gen"
-Issues = "https://github.com/VincentFerreira/podcast-gen/issues"
-Changelog = "https://github.com/VincentFerreira/podcast-gen/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/VincentFerreira/text-to-podcast"
+Issues = "https://github.com/VincentFerreira/text-to-podcast/issues"
+Changelog = "https://github.com/VincentFerreira/text-to-podcast/blob/main/CHANGELOG.md"
 
 [project.scripts]
-podcast = "podcast_gen.cli:app"
+podcast = "text_to_podcast.cli:app"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6", "pre-commit>=3"]
@@ -51,7 +51,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/podcast_gen"]
+packages = ["src/text_to_podcast"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -67,4 +67,4 @@ select = ["E", "F", "I", "UP", "B"]
 ignore = ["B008"]  # typer declares CLI options as default arguments
 
 [tool.ruff.lint.per-file-ignores]
-"src/podcast_gen/cli.py" = ["UP045"]  # typer needs Optional[...] on Python 3.10
+"src/text_to_podcast/cli.py" = ["UP045"]  # typer needs Optional[...] on Python 3.10

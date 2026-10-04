@@ -1,12 +1,12 @@
 # Contributing
 
-Thanks for your interest in podcast-gen! Bug reports, ideas and pull requests are welcome.
+Thanks for your interest in text-to-podcast! Bug reports, ideas and pull requests are welcome.
 
 ## Development setup
 
 ```bash
-git clone https://github.com/VincentFerreira/podcast-gen.git
-cd podcast-gen
+git clone https://github.com/VincentFerreira/text-to-podcast.git
+cd text-to-podcast
 uv sync
 uv run pre-commit install
 ```
@@ -29,7 +29,7 @@ uv run pytest -m slow    # end-to-end tests (download models; `create` also need
 ## Project layout
 
 ```
-src/podcast_gen/
+src/text_to_podcast/
 ├── cli.py            # `podcast create | dialogue | generate | voices`
 ├── sources.py        # load articles: files, folders, stdin, URLs (trafilatura)
 ├── llm.py            # OpenAI-compatible chat client (Ollama by default)
@@ -45,15 +45,15 @@ src/podcast_gen/
 
 ## Adding an engine
 
-1. Create `src/podcast_gen/engines/<name>_engine.py` with a class following the `TTSEngine` protocol (`engines/base.py`): `name`, `sample_rate`, `voices()` and `synthesize(text) -> np.ndarray` (mono float32).
-2. Download models lazily into `~/.cache/podcast_gen/<name>` (see `piper_engine.ensure_voice`).
+1. Create `src/text_to_podcast/engines/<name>_engine.py` with a class following the `TTSEngine` protocol (`engines/base.py`): `name`, `sample_rate`, `voices()` and `synthesize(text) -> np.ndarray` (mono float32).
+2. Download models lazily into `~/.cache/text_to_podcast/<name>` (see `piper_engine.ensure_voice`).
 3. Register it in `make_engine()` and `ENGINES` in `cli.py`.
 4. Add a processing chain for it in `mix.VOICE_CHAINS` so it blends with the other voices.
 5. Add it to `scripts/bench.py` and document its performance and model license in the README.
 
 ## Adding a language
 
-1. Create `src/podcast_gen/locales/<lang>/` with:
+1. Create `src/text_to_podcast/locales/<lang>/` with:
    - `normalize.py`, exposing a `normalize(text) -> str` that spells out numbers, dates, units and abbreviations;
    - `phrases.py`, providing the same functions and constants as `locales/fr/phrases.py`;
    - `prompts.py`, with the LLM prompts, tones, audiences and `WORDS_PER_MINUTE` (see `locales/fr/prompts.py`);

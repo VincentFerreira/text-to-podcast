@@ -26,5 +26,5 @@ paste the full output here
 **Environment**
 - OS:
 - Python version:
-- podcast-gen version / commit:
+- text-to-podcast version / commit:
 - CPU (cores, RAM):

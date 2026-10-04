@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from podcast_gen import sources
-from podcast_gen.sources import SourceError, load_sources
+from text_to_podcast import sources
+from text_to_podcast.sources import SourceError, load_sources
 
 
 def test_file_folder_and_stdin(tmp_path, monkeypatch):

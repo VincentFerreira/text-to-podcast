@@ -27,6 +27,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Optional jingle and auto-ducked music bed.
 - `scripts/bench.py` to measure each engine's real-time factor.
 
-[Unreleased]: https://github.com/VincentFerreira/podcast-gen/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/VincentFerreira/podcast-gen/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/VincentFerreira/podcast-gen/releases/tag/v0.1.0
+[Unreleased]: https://github.com/VincentFerreira/text-to-podcast/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/VincentFerreira/text-to-podcast/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/VincentFerreira/text-to-podcast/releases/tag/v0.1.0

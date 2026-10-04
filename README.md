@@ -1,6 +1,6 @@
-# podcast-gen 🎙️
+# text-to-podcast 🎙️
 
-[![CI](https://github.com/VincentFerreira/podcast-gen/actions/workflows/ci.yml/badge.svg)](https://github.com/VincentFerreira/podcast-gen/actions)
+[![CI](https://github.com/VincentFerreira/text-to-podcast/actions/workflows/ci.yml/badge.svg)](https://github.com/VincentFerreira/text-to-podcast/actions)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 ![Python 3.10–3.13](https://img.shields.io/badge/python-3.10–3.13-blue.svg)
 
@@ -19,9 +19,9 @@ You'll need Linux, Python 3.10+, [uv](https://docs.astral.sh/uv/), ffmpeg and [O
 curl -fsSL https://ollama.com/install.sh | sh
 ollama pull ministral-3:3b
 
-# 2. podcast-gen
-git clone https://github.com/VincentFerreira/podcast-gen.git
-cd podcast-gen
+# 2. text-to-podcast
+git clone https://github.com/VincentFerreira/text-to-podcast.git
+cd text-to-podcast
 uv sync
 
 # 3. Your first episode
@@ -33,7 +33,7 @@ You get `out/matinale-<date>.mp3` and its script (`.script.md`). The first run d
 Writing the show takes time: 10 to 15 minutes for a 5-minute episode on a modest dual-core laptop, less on a recent one. It's designed to run in the background, for instance every morning:
 
 ```bash
-30 6 * * * cd ~/podcast-gen && uv run podcast create ~/watch/ -o ~/podcasts/$(date +\%F).mp3
+30 6 * * * cd ~/text-to-podcast && uv run podcast create ~/watch/ -o ~/podcasts/$(date +\%F).mp3
 ```
 
 ## What you can give it

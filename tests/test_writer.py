@@ -1,8 +1,8 @@
 import json
 
-from podcast_gen import writer
-from podcast_gen.dialogue import parse_dialogue
-from podcast_gen.sources import Source
+from text_to_podcast import writer
+from text_to_podcast.dialogue import parse_dialogue
+from text_to_podcast.sources import Source
 
 SOURCES = [
     Source(
@@ -136,7 +136,7 @@ def test_write_script_round_trips_through_dialogue_parser():
 
 
 def test_tidy_turns_removes_greetings_signoffs_and_trims():
-    from podcast_gen.dialogue import Turn
+    from text_to_podcast.dialogue import Turn
 
     turns = [Turn("Claire", "Bonjour à tous ! Aujourd'hui on parle de routeurs.")]
     turns += [Turn("Marc" if i % 2 else "Claire", " ".join(["mot"] * 20)) for i in range(1, 12)]

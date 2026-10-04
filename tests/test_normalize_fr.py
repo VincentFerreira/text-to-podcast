@@ -1,7 +1,7 @@
 import pytest
 
-from podcast_gen.locales import get_locale
-from podcast_gen.locales.fr.normalize import normalize
+from text_to_podcast.locales import get_locale
+from text_to_podcast.locales.fr.normalize import normalize
 
 
 @pytest.mark.parametrize(

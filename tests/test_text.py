@@ -1,7 +1,7 @@
 import datetime as dt
 
-from podcast_gen import script
-from podcast_gen.text import MAX_CHUNK_CHARS, chunk
+from text_to_podcast import script
+from text_to_podcast.text import MAX_CHUNK_CHARS, chunk
 
 
 def test_chunk_respects_limit_and_keeps_text():

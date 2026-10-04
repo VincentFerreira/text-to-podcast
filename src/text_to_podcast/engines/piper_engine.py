@@ -7,7 +7,8 @@ from pathlib import Path
 import numpy as np
 
 REPO = "https://huggingface.co/rhasspy/piper-voices/resolve/main"
-CACHE = Path(os.environ.get("PODCAST_GEN_CACHE", Path.home() / ".cache" / "podcast_gen")) / "piper"
+CACHE_ROOT = Path.home() / ".cache" / "text_to_podcast"
+CACHE = Path(os.environ.get("TEXT_TO_PODCAST_CACHE", CACHE_ROOT)) / "piper"
 FRENCH_VOICES = ["fr_FR-siwis-medium", "fr_FR-upmc-medium", "fr_FR-tom-medium", "fr_FR-mls-medium"]
 
 

@@ -9,9 +9,9 @@ from __future__ import annotations
 import sys
 import time
 
-from podcast_gen.cli import make_engine
-from podcast_gen.locales import get_locale
-from podcast_gen.text import chunk
+from text_to_podcast.cli import make_engine
+from text_to_podcast.locales import get_locale
+from text_to_podcast.text import chunk
 
 # French news-style paragraph (the engines are benchmarked on the language they will speak)
 TEXT = (

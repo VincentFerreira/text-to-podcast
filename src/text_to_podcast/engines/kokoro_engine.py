@@ -8,7 +8,8 @@ import numpy as np
 
 RELEASE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
 FILES = ("kokoro-v1.0.onnx", "voices-v1.0.bin")
-CACHE = Path(os.environ.get("PODCAST_GEN_CACHE", Path.home() / ".cache" / "podcast_gen")) / "kokoro"
+CACHE_ROOT = Path.home() / ".cache" / "text_to_podcast"
+CACHE = Path(os.environ.get("TEXT_TO_PODCAST_CACHE", CACHE_ROOT)) / "kokoro"
 
 
 def ensure_models() -> tuple[Path, Path]:

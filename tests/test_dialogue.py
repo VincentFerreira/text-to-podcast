@@ -2,8 +2,8 @@ import datetime as dt
 
 import numpy as np
 
-from podcast_gen import dialogue as dlg
-from podcast_gen import mix
+from text_to_podcast import dialogue as dlg
+from text_to_podcast import mix
 
 
 def test_speaker_spec():

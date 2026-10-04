@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from podcast_gen import audio
-from podcast_gen.cli import app
+from text_to_podcast import audio
+from text_to_podcast.cli import app
 
 SAMPLE = Path(__file__).parent.parent / "samples" / "fr" / "dialogue_short.md"
 
@@ -25,7 +25,7 @@ def test_dialogue_end_to_end(tmp_path):
 
 
 def _ollama_ready() -> bool:
-    from podcast_gen.llm import LLMClient, LLMError
+    from text_to_podcast.llm import LLMClient, LLMError
 
     try:
         LLMClient().check()

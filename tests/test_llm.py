@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from podcast_gen.llm import LLMClient, LLMError
+from text_to_podcast.llm import LLMClient, LLMError
 
 
 class FakeOllama(BaseHTTPRequestHandler):
