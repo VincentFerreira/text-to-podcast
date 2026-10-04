@@ -9,6 +9,9 @@ from dataclasses import dataclass, field
 from .locales import get_locale
 from .script import Paragraph, as_sentence
 
+# "Name: text" or "**Name :** text"
+TAG_RE = re.compile(r"^\**\s*([^\s:*][^:*]{0,30}?)\s*\**\s*:\s*\**\s*(.*)$")
+
 
 @dataclass
 class Speaker:
@@ -55,7 +58,7 @@ def parse_dialogue(source: str, names: list[str]) -> DialogueDocument:
     Untagged lines following a tagged one continue the same turn.
     """
     by_lower = {n.lower(): n for n in names}
-    tag = re.compile(r"^\**\s*([^\s:*][^:*]{0,30}?)\s*\**\s*:\s*\**\s*(.*)$")
+    tag = TAG_RE
     title: str | None = None
     sections = [DialogueSection(title=None)]
     for block in re.split(r"\n\s*\n", source.strip()):

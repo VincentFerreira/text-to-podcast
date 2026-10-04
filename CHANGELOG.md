@@ -5,6 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-04
+
+### Added
+- `podcast create`: give it articles (files, folders, URLs or stdin) and a local LLM writes a morning-show conversation between the two hosts, then voices it. Options: `--duration`, `--tone`, `--audience`, `--brief`, `--script-only`.
+- LLM client for any OpenAI-compatible server (Ollama by default, with `ministral-3:3b`), via `--llm-model` / `--llm-url` / `PODCAST_LLM_API_KEY`. The model is unloaded before the voices are loaded, to save RAM.
+- Web article extraction with trafilatura.
+- French LLM prompts in `locales/fr/prompts.py`.
+
+### Fixed
+- The README no longer says that `podcast dialogue` writes a conversation: it reads a script, or lets the hosts take turns on sections.
+
 ## [0.1.0] - 2026-10-04
 
 ### Added
@@ -16,5 +27,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Optional jingle and auto-ducked music bed.
 - `scripts/bench.py` to measure each engine's real-time factor.
 
-[Unreleased]: https://github.com/VincentFerreira/podcast-gen/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/VincentFerreira/podcast-gen/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/VincentFerreira/podcast-gen/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/VincentFerreira/podcast-gen/releases/tag/v0.1.0

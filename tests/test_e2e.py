@@ -22,3 +22,27 @@ def test_dialogue_end_to_end(tmp_path):
     )
     assert result.exit_code == 0, result.output
     assert 40 < audio.duration_seconds(output) < 90
+
+
+def _ollama_ready() -> bool:
+    from podcast_gen.llm import LLMClient, LLMError
+
+    try:
+        LLMClient().check()
+    except LLMError:
+        return False
+    return True
+
+
+@pytest.mark.slow
+def test_create_script_end_to_end(tmp_path):
+    if not _ollama_ready():
+        pytest.skip("Ollama with the default model is not available")
+    output = tmp_path / "matinale.mp3"
+    sample = SAMPLE.parent / "veille_tech.md"
+    result = CliRunner().invoke(
+        app, ["create", str(sample), "-o", str(output), "--duration", "2", "--script-only"]
+    )
+    assert result.exit_code == 0, result.output
+    script = output.with_suffix(".script.md").read_text()
+    assert "Claire :" in script and "Marc :" in script

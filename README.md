@@ -1,130 +1,162 @@
-# podcast-gen
+# podcast-gen 🎙️
 
-[![CI](https://github.com/VincentFerreira/podcast-gen/actions/workflows/ci.yml/badge.svg)](https://github.com/VincentFerreira/podcast-gen/actions/workflows/ci.yml)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)
+[![CI](https://github.com/VincentFerreira/podcast-gen/actions/workflows/ci.yml/badge.svg)](https://github.com/VincentFerreira/podcast-gen/actions)
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
+![Python 3.10–3.13](https://img.shields.io/badge/python-3.10–3.13-blue.svg)
 
-Turn a text into a French **"morning edition" podcast** — one voice or a two-host dialogue — using open-source TTS models that run **locally on a regular CPU**. Five minutes of audio take about three minutes to generate on a 4-core laptop.
+**Turns a text into a podcast-style audio file (MP3), in French.**
 
-## Features
+Give it articles and two hosts, Claire and Marc, discuss them. Or give it your own text and it is read as is, by one or two voices.
 
-- **Two modes**:
-  - `generate` reads the text with a single voice;
-  - `dialogue` turns it into a conversation between a host and a co-host.
-- **Morning-edition structure**, generated around your text:
-  - a dated greeting and a table of contents built from your `##` headings;
-  - transitions between sections, handoffs between hosts, and an outro.
-- **French text normalization**: times, dates, percentages, amounts (including `M€` and `Md€`), temperatures, ordinals and common abbreviations are spelled out before synthesis.
-- **Shared mix for two voices**: the voices are resampled to the same rate and leveled, each gets an engine-specific EQ, then both go through a shared bus (light compression, a small room reverb) and are normalized to -16 LUFS. The result sounds like one show rather than two engines stitched together.
-- **Optional jingle and music bed**: the music bed ducks automatically under the voices.
-- **Three engines**: [Supertonic 3](https://huggingface.co/Supertone/supertonic-3), [Piper](https://github.com/OHF-Voice/piper1-gpl) and [Kokoro](https://github.com/thewh1teagle/kokoro-onnx), all running on ONNX and CPU only.
+Everything runs on your machine: no API key, no GPU, no cloud.
 
-## Requirements
+## Quick start
 
-- Linux (other platforms are untested)
-- Python 3.10 – 3.13 and [uv](https://docs.astral.sh/uv/)
-- `ffmpeg` (`sudo apt install ffmpeg`)
-- About 1 GB of disk space for the models, which are downloaded on first use
-
-## Installation
+You'll need Linux, Python 3.10+, [uv](https://docs.astral.sh/uv/), ffmpeg and [Ollama](https://ollama.com).
 
 ```bash
+# 1. The language model that writes the show (3 GB, once)
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull ministral-3:3b
+
+# 2. podcast-gen
 git clone https://github.com/VincentFerreira/podcast-gen.git
 cd podcast-gen
 uv sync
+
+# 3. Your first episode
+uv run podcast create samples/fr/veille_tech.md
 ```
 
-## Usage
+You get `out/matinale-<date>.mp3` and its script (`.script.md`). The first run downloads the voices (about 1 GB).
 
-### Two-host dialogue
+Writing the show takes time: 10 to 15 minutes for a 5-minute episode on a modest dual-core laptop, less on a recent one. It's designed to run in the background, for instance every morning:
 
 ```bash
-uv run podcast dialogue samples/fr/dialogue_short.md -o out/dialogue.mp3
-uv run podcast dialogue samples/fr/morning_edition.md          # plain text: alternation mode
-uv run podcast dialogue script.md --gap 250 --no-mix -o raw.mp3
+30 6 * * * cd ~/podcast-gen && uv run podcast create ~/watch/ -o ~/podcasts/$(date +\%F).mp3
 ```
 
-The default voices are **Claire**, the host (Piper `fr_FR-siwis-medium`), and **Marc**, the co-host (Supertonic `M3`, 8 steps). To change them:
+## What you can give it
+
+Any text: files, folders, links or stdin.
+
+```bash
+uv run podcast create article.md
+uv run podcast create note1.md note2.md https://example.com/some-article
+uv run podcast create my-watch-folder/
+cat notes.txt | uv run podcast create -
+```
+
+Web pages are cleaned up automatically. Each source is trimmed to about 1,500 words.
+
+Each article, or each `##` section of a digest, becomes one segment of the show. A single article is split into a few angles.
+
+## Shaping the show
+
+```bash
+uv run podcast create watch.md --duration 8 --tone posé --audience tech \
+    --brief "Focus on what it changes for small companies, and be critical."
+```
+
+| Option | What it does | Default |
+|---|---|---|
+| `--duration` | Episode length, in minutes | 5 |
+| `--tone` | `dynamique`, `posé` or `décontracté` | dynamique |
+| `--audience` | `grand-public` (explains everything) or `tech` | grand-public |
+| `--brief` | Anything you want to tell the writer | — |
+| `--show` | Show name | "votre édition du matin" |
+| `--date` | Date announced in the intro | today |
+| `--jingle` / `--bed` | Jingle, and background music that fades under the voices | — |
+
+## Read it before you record it
+
+A small model can get a detail wrong. If it matters, write the script first, check it, then record it:
+
+```bash
+uv run podcast create watch.md --script-only     # writes out/matinale-<date>.script.md
+# …read it, fix what needs fixing…
+uv run podcast dialogue out/matinale-<date>.script.md -o episode.mp3
+```
+
+The script is plain text, one line per turn:
+
+```markdown
+## Une faille dans les routeurs
+
+Claire : Marc, on parle sécurité ce matin, avec une faille plutôt sérieuse.
+Marc : Oui, elle touche des routeurs Wi-Fi vendus depuis 2021…
+```
+
+## Changing the model
+
+The default model is [Ministral 3 3B](https://ollama.com/library/ministral-3). You can use any other one:
+
+```bash
+ollama pull qwen3.5:4b
+uv run podcast create watch.md --llm-model qwen3.5:4b
+```
+
+Any OpenAI-compatible server works too (LM Studio, llama.cpp, a cloud provider…):
+
+```bash
+export PODCAST_LLM_API_KEY=...      # if the server needs one
+uv run podcast create watch.md --llm-url https://api.mistral.ai/v1 --llm-model mistral-small-latest
+```
+
+A bigger model writes better but takes longer on a CPU. Each request may take up to 30 minutes (`PODCAST_LLM_TIMEOUT` to change it).
+
+## Without the language model
+
+To read your own text as is:
+
+- `podcast dialogue script.md` records a script in the format above. Without names, Claire and Marc take turns on the `##` sections.
+- `podcast generate text.md` reads your text with a single voice.
+
+Both add a dated greeting, a rundown of the topics and a sign-off (`--no-intro` to leave them out).
+
+## Sound
+
+- Times, dates, percentages and amounts (even `3,2 Md€`) are read out the way a person would say them.
+- Both voices are leveled and mixed together, with natural pauses between them (`--gap` to adjust).
+
+## Voices
+
+By default, Claire hosts and Marc is her co-host. To change them:
 
 ```bash
 --host "Claire=piper:fr_FR-upmc-medium" --cohost "Marc=supertonic:M2"
 ```
 
-The input can take two forms:
-- **Tagged script**: each line starts with the speaker's name, either `Claire : …` or `**Marc :** …`. Untagged lines continue the previous line.
-- **Plain Markdown**: Claire announces each section and hands over, and the sections alternate between Marc and Claire.
+`uv run podcast voices --engine piper` lists the available voices.
 
-### Single voice
+| Engine | French voices | Speed |
+|---|---|---|
+| Piper | siwis, upmc, tom, mls | Very fast |
+| Supertonic 3 | 5 male, 5 female | Fast (set with `--steps 2/5/8`) |
+| Kokoro | ff_siwis | Slower |
 
-```bash
-uv run podcast generate samples/fr/morning_edition.md -o out/edition.mp3
-uv run podcast generate text.md --voice F2 --steps 8
-uv run podcast generate text.txt --no-intro -o reading.wav
-cat text.md | uv run podcast generate - -o edition.mp3
-uv run podcast voices --engine piper
-```
+## Other languages
 
-### Input format
-
-```markdown
-# Edition title            (announced after the greeting)
-
-## Weather                 (a section: listed in the contents, introduced with a transition)
-
-Paragraphs separated by a blank line.
-```
-
-### Common options
-
-| Option | Effect |
-|---|---|
-| `--date 2026-10-05` | Date announced in the intro |
-| `--show "Le Réveil Info"` | Show name |
-| `--jingle jingle.mp3` | Jingle at the start, between sections and at the end |
-| `--bed music.mp3` | Looped music bed, ducked under the voices |
-| `--steps 2/5/8` | Supertonic speed/quality trade-off |
-| `--gap 300` | Silence between turns of different speakers, in ms (dialogue) |
-| `--no-intro` | Read the text only, without intro or outro |
-
-## Engines and performance
-
-Measured on a 4-core CPU with 7.6 GB of RAM (`uv run python scripts/bench.py`). RTF is compute time divided by audio duration, so lower is faster.
-
-| Engine | French voices | RTF | 5 min of audio ≈ |
-|---|---|---|---|
-| Piper `fr_FR-siwis-medium` | siwis, upmc, tom, mls | 0.15 | < 1 min |
-| Supertonic 3, 5 steps | M1–M5, F1–F5 | 0.53 | ~2.6 min |
-| Supertonic 3, 8 steps | M1–M5, F1–F5 | 0.6–0.9 | ~3–4.5 min |
-| Kokoro | ff_siwis only | 1.0–1.3 | ~5–6.5 min |
-
-The default dialogue mix (Piper + Supertonic 8 steps) produced 5 min 16 s of audio in 3 min 07 s. RTF goes up when other applications load the CPU.
-
-## Languages
-
-Only **French** is supported for now. Everything the hosts say around your text, and the text normalization, lives in [`src/podcast_gen/locales/fr/`](src/podcast_gen/locales/fr/). The rest of the code is language-independent. See [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-language) to add a language.
+Only French for now. To add a language, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-The code is licensed under the **GNU GPL v3.0 or later** (see [LICENSE](LICENSE)), as required by its `piper-tts` dependency.
+Code: GPL v3 or later. The models keep their own licenses:
 
-The models are downloaded at runtime and are **not** distributed with this repository. They come with their own licenses:
+- Ministral 3 (the default writer): Apache-2.0
+- Supertonic 3: OpenRAIL-M, which restricts some uses
+- Piper siwis: CC-BY 4.0
+- Kokoro: Apache-2.0
 
-| Model | License |
-|---|---|
-| Supertonic 3 weights | [OpenRAIL-M](https://huggingface.co/Supertone/supertonic-3) (use-based restrictions) |
-| Piper voice `fr_FR-siwis-medium` | Trained on the SIWIS dataset, [CC-BY 4.0](https://datashare.is.ed.ac.uk/handle/10283/2353) |
-| Kokoro-82M weights | Apache-2.0 |
+Check them before using the audio commercially.
 
-Check each model's license before any commercial use of the audio you generate.
-
-## Development
+## Contributing
 
 ```bash
 uv sync
-uv run pre-commit install       # ruff on every commit
-uv run pytest                   # fast unit tests, no model download
-uv run pytest -m slow           # end-to-end test: downloads models, synthesizes audio
-uv run ruff check . && uv run ruff format --check .
+uv run pre-commit install
+uv run pytest            # quick tests, no download, no Ollama
+uv run pytest -m slow    # full run with the real models
 ```
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+See [CONTRIBUTING.md](CONTRIBUTING.md).

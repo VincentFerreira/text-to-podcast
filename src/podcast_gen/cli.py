@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeRemainingColumn
 
 from . import audio, script
+from .llm import DEFAULT_MODEL, DEFAULT_URL
 from .locales import get_locale
 from .text import chunk
 
@@ -136,40 +137,42 @@ def generate(
     print_summary(output, started)
 
 
-@app.command()
-def dialogue(
-    source: Path = typer.Argument(..., help="Tagged script ('Claire: …') or plain Markdown."),
-    output: Optional[Path] = typer.Option(None, "-o", "--output", help=OUTPUT_HELP),
-    host: str = typer.Option("Claire=piper:fr_FR-siwis-medium", help="Host: Name=engine:voice."),
-    cohost: str = typer.Option("Marc=supertonic:M3", help="Co-host: Name=engine:voice."),
-    steps: int = typer.Option(8, help="Supertonic synthesis steps."),
-    lang: str = typer.Option("fr", help="Spoken language."),
-    date: Optional[str] = typer.Option(None, help=DATE_HELP),
-    show: Optional[str] = typer.Option(None, help=SHOW_HELP),
-    intro: bool = typer.Option(True, "--intro/--no-intro", help="Add intro, handoffs and outro."),
-    jingle: Optional[Path] = typer.Option(None, help=JINGLE_HELP),
-    bed: Optional[Path] = typer.Option(None, help=BED_HELP),
-    gap: int = typer.Option(300, help="Silence between turns of different voices, in ms."),
-    mix: bool = typer.Option(
-        True, "--mix/--no-mix", help="Shared voice processing (--no-mix: raw, for comparison)."
-    ),
-):
-    """Two-voice dialogue, mixed onto a single track."""
+HOST_HELP = "Host: Name=engine:voice."
+COHOST_HELP = "Co-host: Name=engine:voice."
+DEFAULT_HOST = "Claire=piper:fr_FR-siwis-medium"
+DEFAULT_COHOST = "Marc=supertonic:M3"
+GAP_HELP = "Silence between turns of different voices, in ms."
+MIX_HELP = "Shared voice processing (--no-mix: raw, for comparison)."
+
+
+def speak_dialogue(
+    script_text: str,
+    output: Path,
+    day: dt.date,
+    host: str,
+    cohost: str,
+    *,
+    steps: int,
+    lang: str,
+    show: Optional[str],
+    intro: bool,
+    jingle: Optional[Path],
+    bed: Optional[Path],
+    gap: int,
+    mix: bool,
+) -> None:
+    """Synthesize and mix a two-voice script (tagged or plain Markdown) into `output`."""
     from . import dialogue as dlg
     from . import mix as mixer
 
-    day = dt.date.fromisoformat(date) if date else dt.date.today()
-    output = output or Path("out") / f"dialogue-{day.isoformat()}.mp3"
     speakers = {s.name: s for s in (dlg.Speaker.parse(host), dlg.Speaker.parse(cohost))}
     host_name, cohost_name = list(speakers)
-
-    doc = dlg.parse_dialogue(read_source(source), list(speakers))
+    doc = dlg.parse_dialogue(script_text, list(speakers))
     paragraphs = dlg.build_dialogue_edition(
         doc, day, host_name, cohost_name, show=show, intro=intro, lang=lang
     )
     plan = plan_chunks(paragraphs, lang)
 
-    started = time.perf_counter()
     engines = {}
     for name, spk in speakers.items():
         with console.status(f"Loading {name}'s voice ({spk.engine}:{spk.voice})…"):
@@ -183,6 +186,7 @@ def dialogue(
             wav = tts.synthesize(text)
             segments.append(mixer.Segment(speaker, mixer.resample(wav, tts.sample_rate), pause))
             progress.advance(task)
+    del engines  # free the voice models before the mix
 
     title = doc.title or get_locale(lang).phrases.episode_title(day)
     with console.status("Mixing and exporting…"):
@@ -197,6 +201,117 @@ def dialogue(
             turn_gap=gap,
             title=title,
         )
+
+
+@app.command()
+def dialogue(
+    source: Path = typer.Argument(..., help="Tagged script ('Claire: …') or plain Markdown."),
+    output: Optional[Path] = typer.Option(None, "-o", "--output", help=OUTPUT_HELP),
+    host: str = typer.Option(DEFAULT_HOST, help=HOST_HELP),
+    cohost: str = typer.Option(DEFAULT_COHOST, help=COHOST_HELP),
+    steps: int = typer.Option(8, help="Supertonic synthesis steps."),
+    lang: str = typer.Option("fr", help="Spoken language."),
+    date: Optional[str] = typer.Option(None, help=DATE_HELP),
+    show: Optional[str] = typer.Option(None, help=SHOW_HELP),
+    intro: bool = typer.Option(True, "--intro/--no-intro", help="Add intro, handoffs and outro."),
+    jingle: Optional[Path] = typer.Option(None, help=JINGLE_HELP),
+    bed: Optional[Path] = typer.Option(None, help=BED_HELP),
+    gap: int = typer.Option(300, help=GAP_HELP),
+    mix: bool = typer.Option(True, "--mix/--no-mix", help=MIX_HELP),
+):
+    """Read a two-voice script (or let the hosts take turns on sections), on one track."""
+    day = dt.date.fromisoformat(date) if date else dt.date.today()
+    output = output or Path("out") / f"dialogue-{day.isoformat()}.mp3"
+    started = time.perf_counter()
+    speak_dialogue(
+        read_source(source), output, day, host, cohost, steps=steps, lang=lang, show=show,
+        intro=intro, jingle=jingle, bed=bed, gap=gap, mix=mix,
+    )  # fmt: skip
+    print_summary(output, started)
+
+
+@app.command()
+def create(
+    sources: list[str] = typer.Argument(
+        ..., help="Article files, folders, URLs or '-' for stdin (one or more)."
+    ),
+    output: Optional[Path] = typer.Option(None, "-o", "--output", help=OUTPUT_HELP),
+    duration: float = typer.Option(5.0, "-d", "--duration", help="Target length, in minutes."),
+    tone: str = typer.Option("dynamique", help="dynamique | posé | décontracté"),
+    audience: str = typer.Option("grand-public", help="grand-public | tech"),
+    brief: str = typer.Option("", help="Free instructions for the writer, e.g. an angle to take."),
+    script_only: bool = typer.Option(
+        False, "--script-only", help="Only write the script (to review/edit), no audio."
+    ),
+    llm_model: str = typer.Option(DEFAULT_MODEL, help="Model name on the LLM server."),
+    llm_url: str = typer.Option(DEFAULT_URL, help="OpenAI-compatible API base URL."),
+    host: str = typer.Option(DEFAULT_HOST, help=HOST_HELP),
+    cohost: str = typer.Option(DEFAULT_COHOST, help=COHOST_HELP),
+    steps: int = typer.Option(8, help="Supertonic synthesis steps."),
+    lang: str = typer.Option("fr", help="Spoken language."),
+    date: Optional[str] = typer.Option(None, help=DATE_HELP),
+    show: Optional[str] = typer.Option(None, help=SHOW_HELP),
+    jingle: Optional[Path] = typer.Option(None, help=JINGLE_HELP),
+    bed: Optional[Path] = typer.Option(None, help=BED_HELP),
+    gap: int = typer.Option(300, help=GAP_HELP),
+    mix: bool = typer.Option(True, "--mix/--no-mix", help=MIX_HELP),
+):
+    """Write a morning-show conversation from your articles with a local LLM, then voice it."""
+    from . import writer
+    from .dialogue import Speaker
+    from .llm import LLMClient, LLMError
+    from .sources import SourceError, load_sources
+
+    day = dt.date.fromisoformat(date) if date else dt.date.today()
+    output = output or Path("out") / f"matinale-{day.isoformat()}.mp3"
+    script_path = output.with_suffix(".script.md")
+    started = time.perf_counter()
+
+    try:
+        material = load_sources(sources)
+    except SourceError as e:
+        raise typer.BadParameter(str(e)) from e
+    for s in material:
+        note = " [yellow](truncated)[/]" if s.truncated else ""
+        console.print(f"• {s.title} — {s.words} words{note}")
+
+    client = LLMClient(base_url=llm_url, model=llm_model)
+    settings = writer.Settings(
+        host=Speaker.parse(host).name,
+        cohost=Speaker.parse(cohost).name,
+        duration=duration,
+        tone=tone,
+        audience=audience,
+        brief=brief,
+        lang=lang,
+    )
+    try:
+        client.check()
+        with console.status("Writing…") as status:
+            script_text, _ = writer.write_script(
+                client, material, settings, on_step=lambda step: status.update(f"{step}…")
+            )
+    except LLMError as e:
+        console.print(f"[red]LLM error:[/] {e}")
+        raise typer.Exit(1) from e
+    finally:
+        client.unload()
+    script_path.parent.mkdir(parents=True, exist_ok=True)
+    script_path.write_text(script_text, encoding="utf-8")
+    written = time.perf_counter() - started
+    console.print(
+        f"[green]✔[/] script: {script_path}  —  {len(script_text.split())} words, "
+        f"written in {written // 60:.0f} min {written % 60:02.0f} s "
+        f"({client.usage.tokens_per_second:.1f} tokens/s)"
+    )
+    if script_only:
+        console.print(f"Review it, then: uv run podcast dialogue {script_path} -o {output}")
+        return
+
+    speak_dialogue(
+        script_text, output, day, host, cohost, steps=steps, lang=lang, show=show,
+        intro=True, jingle=jingle, bed=bed, gap=gap, mix=mix,
+    )  # fmt: skip
     print_summary(output, started)
 
 

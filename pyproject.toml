@@ -1,13 +1,13 @@
 [project]
 name = "podcast-gen"
-version = "0.1.0"
+version = "0.2.0"
 description = "Turn a text into a French 'morning edition' podcast, one or two voices, fully local on CPU"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 authors = [{ name = "Vincent Ferreira" }]
 requires-python = ">=3.10,<3.14"
-keywords = ["tts", "text-to-speech", "podcast", "french", "onnx", "piper", "supertonic", "kokoro"]
+keywords = ["tts", "text-to-speech", "podcast", "french", "llm", "ollama", "onnx", "piper", "supertonic"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -32,6 +32,7 @@ dependencies = [
     "piper-tts>=1.3",
     "soxr>=0.4",
     "pyloudnorm>=0.1.1",
+    "trafilatura>=2.0",
 ]
 
 [project.urls]

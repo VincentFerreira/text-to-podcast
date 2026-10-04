@@ -17,12 +17,12 @@ uv run pre-commit install
 
 ```bash
 uv run ruff check . && uv run ruff format --check .
-uv run pytest            # unit tests (fast, no model download)
-uv run pytest -m slow    # end-to-end test (downloads models, ~1 min)
+uv run pytest            # unit tests (fast, no model download, no Ollama)
+uv run pytest -m slow    # end-to-end tests (download models; `create` also needs Ollama)
 ```
 
 - Keep pull requests focused on one change.
-- Add or update tests for behavior changes. Unit tests must not download models; anything that needs real synthesis goes behind `@pytest.mark.slow`.
+- Add or update tests for behavior changes. Unit tests must not download models or call an LLM (use a fake client, see `tests/test_writer.py`); anything that needs real models goes behind `@pytest.mark.slow`.
 - Code, comments and docs are written in English. Spoken content belongs in a locale (see below).
 - If you change performance-sensitive code, run `uv run python scripts/bench.py` before and after.
 
@@ -30,14 +30,17 @@ uv run pytest -m slow    # end-to-end test (downloads models, ~1 min)
 
 ```
 src/podcast_gen/
-├── cli.py            # `podcast generate | dialogue | voices`
+├── cli.py            # `podcast create | dialogue | generate | voices`
+├── sources.py        # load articles: files, folders, stdin, URLs (trafilatura)
+├── llm.py            # OpenAI-compatible chat client (Ollama by default)
+├── writer.py         # LLM show writing: outline, then one call per segment
 ├── script.py         # Markdown parsing + single-voice edition structure
 ├── dialogue.py       # tagged-script parsing + two-voice edition structure
 ├── text.py           # language-independent sentence splitting / chunking
 ├── audio.py          # single-voice export (ffmpeg, loudness, jingle, music bed)
 ├── mix.py            # multi-voice mix (resampling, leveling, per-engine EQ, shared bus)
 ├── engines/          # one module per TTS engine
-└── locales/fr/       # French normalization (normalize.py) and host phrases (phrases.py)
+└── locales/fr/       # French normalization, host phrases and LLM prompts
 ```
 
 ## Adding an engine
@@ -53,7 +56,8 @@ src/podcast_gen/
 1. Create `src/podcast_gen/locales/<lang>/` with:
    - `normalize.py`, exposing a `normalize(text) -> str` that spells out numbers, dates, units and abbreviations;
    - `phrases.py`, providing the same functions and constants as `locales/fr/phrases.py`;
-   - `__init__.py`, exporting `normalize_text` and `phrases`.
+   - `prompts.py`, with the LLM prompts, tones, audiences and `WORDS_PER_MINUTE` (see `locales/fr/prompts.py`);
+   - `__init__.py`, exporting `normalize_text`, `phrases` and `prompts`.
 2. Add the code to `AVAILABLE` in `locales/__init__.py`.
 3. Add tests mirroring `tests/test_normalize_fr.py`.
 4. Make sure the engines you recommend have good voices in that language.
@@ -61,3 +65,7 @@ src/podcast_gen/
 ## Reporting bugs
 
 Please use the bug report template and include the command you ran, the input text (or a minimal excerpt), and the full error output.
+
+## Tuning the writer
+
+The prompts live in `locales/<lang>/prompts.py`. When you change them, try them on a real model and check three things: the lines alternate between the two hosts, nothing appears that isn't in the sources, and the episode length stays close to `--duration`. `uv run podcast create … --script-only` is the quickest way to iterate.

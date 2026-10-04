@@ -3,6 +3,7 @@
 A locale is a subpackage exposing:
 - `normalize_text(text) -> str`: spell out numbers, dates, abbreviations…
 - `phrases`: everything the hosts say around the input text (intro, transitions, outro).
+- `prompts`: instructions for the LLM that writes shows (`podcast create`).
 """
 
 from __future__ import annotations
