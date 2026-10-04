@@ -17,12 +17,12 @@ uv run pre-commit install
 
 ```bash
 uv run ruff check . && uv run ruff format --check .
-uv run pytest            # unit tests (fast, no model download, no Ollama)
-uv run pytest -m slow    # end-to-end tests (download models; `create` also needs Ollama)
+uv run pytest            # unit tests (fast, no model download, no network)
+uv run pytest -m slow    # end-to-end tests (download models; `create` needs Ollama, the cloud test needs API keys)
 ```
 
 - Keep pull requests focused on one change.
-- Add or update tests for behavior changes. Unit tests must not download models or call an LLM (use a fake client, see `tests/test_writer.py`); anything that needs real models goes behind `@pytest.mark.slow`.
+- Add or update tests for behavior changes. Unit tests must not download models or call an LLM or a cloud API (use a fake client, see `tests/test_writer.py`, or a local `http.server`, see `tests/test_elevenlabs.py`); anything that needs real models goes behind `@pytest.mark.slow`.
 - Code, comments and docs are written in English. Spoken content belongs in a locale (see below).
 - If you change performance-sensitive code, run `uv run python scripts/bench.py` before and after.
 
@@ -32,22 +32,23 @@ uv run pytest -m slow    # end-to-end tests (download models; `create` also need
 src/text_to_podcast/
 ├── cli.py            # `podcast create | dialogue | generate | voices`
 ├── sources.py        # load articles: files, folders, stdin, URLs (trafilatura)
-├── llm.py            # OpenAI-compatible chat client (Ollama by default)
+├── env.py            # API keys from the environment or .env
+├── llm.py            # OpenAI-compatible chat client (Gemini or Ollama)
 ├── writer.py         # LLM show writing: outline, then one call per segment
 ├── script.py         # Markdown parsing + single-voice edition structure
 ├── dialogue.py       # tagged-script parsing + two-voice edition structure
 ├── text.py           # language-independent sentence splitting / chunking
 ├── audio.py          # single-voice export (ffmpeg, loudness, jingle, music bed)
 ├── mix.py            # multi-voice mix (resampling, leveling, per-engine EQ, shared bus)
-├── engines/          # one module per TTS engine
+├── engines/          # one module per TTS engine (ElevenLabs in the cloud, the others local)
 └── locales/fr/       # French normalization, host phrases and LLM prompts
 ```
 
 ## Adding an engine
 
 1. Create `src/text_to_podcast/engines/<name>_engine.py` with a class following the `TTSEngine` protocol (`engines/base.py`): `name`, `sample_rate`, `voices()` and `synthesize(text) -> np.ndarray` (mono float32).
-2. Download models lazily into `~/.cache/text_to_podcast/<name>` (see `piper_engine.ensure_voice`).
-3. Register it in `make_engine()` and `ENGINES` in `cli.py`.
+2. For a local engine, download models lazily into `~/.cache/text_to_podcast/<name>` (see `piper_engine.ensure_voice`).
+3. Register it in `make_engine()` and `ENGINES` in `cli.py`. A cloud engine reads its key in `env.py` and must never be used under `--local`.
 4. Add a processing chain for it in `mix.VOICE_CHAINS` so it blends with the other voices.
 5. Add it to `scripts/bench.py` and document its performance and model license in the README.
 

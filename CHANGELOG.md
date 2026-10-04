@@ -5,6 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- Cloud mode: with `GEMINI_API_KEY`, Gemini (`gemini-3.8-flash`) writes the show; with `ELEVEN_LABS_API_KEY`, ElevenLabs (`eleven_multilingual_v2`, Matilda and Brian) voices it. Keys are read from the environment or a `.env` file.
+- `--local` on `create`, `dialogue` and `generate` to stay offline even when keys are set.
+- `elevenlabs` engine, usable in `--host`, `--cohost`, `generate --engine` and `podcast voices`.
+
+### Changed
+- The README now leads with the cloud setup; the offline setup with Ollama is described second.
+- `.env` is git-ignored.
+
 ## [0.2.0] - 2026-10-04
 
 ### Added

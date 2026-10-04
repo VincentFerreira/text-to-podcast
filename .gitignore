@@ -21,3 +21,10 @@ out/
 
 # Personal Claude Code notes
 CLAUDE.local.md
+
+# Secrets and editor files
+.env
+*.swp
+
+# Secrets
+.env

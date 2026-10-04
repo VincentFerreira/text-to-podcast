@@ -23,7 +23,7 @@ class FakeOllama(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/v1/models":
-            self._send({"data": [{"id": "ministral-3:3b"}]})
+            self._send({"data": [{"id": "ministral-3:3b"}, {"id": "models/gemini-3.8-flash"}]})
         elif self.path == "/api/version":
             self._send({"version": "0.13.1"})
         else:
@@ -58,6 +58,20 @@ def test_chat_and_usage(server):
     assert path == "/v1/chat/completions" and auth == "Bearer secret"
     assert body["model"] == "ministral-3:3b" and body["response_format"] == {"type": "json_object"}
     assert client.usage.completion_tokens == 4
+
+
+def test_gemini_model_ids_and_extra_payload(server):
+    extra = {"reasoning_effort": "none"}
+    client = LLMClient(base_url=server, model="gemini-3.8-flash", extra=extra)
+    client.check()  # listed as "models/gemini-3.8-flash"
+    client.chat([{"role": "user", "content": "hi"}])
+    assert FakeOllama.requests[-1][1]["reasoning_effort"] == "none"
+
+
+def test_remote_server_is_never_unloaded():
+    client = LLMClient(base_url="https://api.example.com/v1")
+    assert not client.is_local() and not client.is_ollama()
+    client.unload()  # no request: it would fail on this unreachable host
 
 
 def test_missing_model_hints_ollama_pull(server):

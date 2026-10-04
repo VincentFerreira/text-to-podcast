@@ -1,7 +1,7 @@
-"""Minimal client for any OpenAI-compatible chat API (Ollama by default).
+"""Minimal client for any OpenAI-compatible chat API (Gemini or Ollama).
 
-Works with Ollama, LM Studio, llama.cpp's llama-server, or a cloud provider
-(set PODCAST_LLM_API_KEY). Uses the standard library only.
+Works with Gemini, Ollama, LM Studio, llama.cpp's llama-server, or another cloud
+provider (set PODCAST_LLM_API_KEY). Uses the standard library only.
 """
 
 from __future__ import annotations
@@ -10,11 +10,16 @@ import json
 import os
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 
 DEFAULT_URL = "http://localhost:11434/v1"
 DEFAULT_MODEL = "ministral-3:3b"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+GEMINI_MODEL = "gemini-3.8-flash"
+# Without this, Gemini "thinks" first and the thinking eats the max_tokens budget.
+GEMINI_EXTRA = {"reasoning_effort": "none"}
 # Per request. Generous on purpose: on a slow CPU a long segment can take 10+ minutes.
 TIMEOUT_S = float(os.environ.get("PODCAST_LLM_TIMEOUT", 1800))
 
@@ -39,6 +44,7 @@ class LLMClient:
     base_url: str = DEFAULT_URL
     model: str = DEFAULT_MODEL
     api_key: str | None = field(default_factory=lambda: os.environ.get("PODCAST_LLM_API_KEY"))
+    extra: dict = field(default_factory=dict)  # merged into every chat payload
     usage: Usage = field(default_factory=Usage)
 
     def __post_init__(self) -> None:
@@ -64,7 +70,13 @@ class LLMClient:
         except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
             raise LLMError(f"cannot reach {url}: {e}") from e
 
+    def is_local(self) -> bool:
+        host = urllib.parse.urlparse(self.base_url).hostname or ""
+        return host in ("localhost", "127.0.0.1", "::1")
+
     def is_ollama(self) -> bool:
+        if not self.is_local():
+            return False
         try:
             return "version" in self._request(f"{self.server_root}/api/version", timeout=5)
         except LLMError:
@@ -82,7 +94,8 @@ class LLMClient:
                     f"(`ollama serve`) and run `ollama pull {self.model}`."
                 ) from e
             raise
-        names = {m.get("id", "") for m in models.get("data", [])}
+        # Gemini lists its models as "models/<name>"
+        names = {m.get("id", "").removeprefix("models/") for m in models.get("data", [])}
         if names and self.model not in names and f"{self.model}:latest" not in names:
             hint = f" Run `ollama pull {self.model}`." if self.is_ollama() else ""
             raise LLMError(f"model {self.model!r} is not available on {self.base_url}.{hint}")
@@ -99,6 +112,7 @@ class LLMClient:
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            **self.extra,
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}

@@ -12,20 +12,30 @@ from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeRemainingColumn
 
 from . import audio, script
-from .llm import DEFAULT_MODEL, DEFAULT_URL
+from .env import elevenlabs_key, gemini_key, load_dotenv
+from .llm import DEFAULT_MODEL, DEFAULT_URL, GEMINI_EXTRA, GEMINI_MODEL, GEMINI_URL
 from .locales import get_locale
 from .text import chunk
 
 app = typer.Typer(
-    help="Turn a text into a 'morning edition' podcast, 100% locally on CPU.",
+    help="Turn a text into a 'morning edition' podcast, with cloud services or fully offline.",
     no_args_is_help=True,
 )
 console = Console()
 
-ENGINES = ("supertonic", "piper", "kokoro")
+ENGINES = ("elevenlabs", "supertonic", "piper", "kokoro")
+
+
+@app.callback()
+def main() -> None:
+    load_dotenv()
 
 
 def make_engine(engine: str, voice: Optional[str], speed: Optional[float], steps: int):
+    if engine == "elevenlabs":
+        from .engines.elevenlabs_engine import ElevenLabsEngine
+
+        return ElevenLabsEngine(voice=voice or "Matilda", speed=speed or 1.0)
     if engine == "supertonic":
         from .engines.supertonic_engine import SupertonicEngine
 
@@ -39,6 +49,38 @@ def make_engine(engine: str, voice: Optional[str], speed: Optional[float], steps
 
         return KokoroEngine(voice=voice or "ff_siwis", speed=speed or 1.0)
     raise typer.BadParameter(f"unknown engine: {engine} (choose from {', '.join(ENGINES)})")
+
+
+def use_cloud_voices(local: bool) -> bool:
+    return not local and elevenlabs_key() is not None
+
+
+def resolve_writer(local: bool, llm_url: Optional[str], llm_model: Optional[str]) -> dict:
+    """LLMClient arguments: an explicit --llm-url wins, then Gemini if keyed, then Ollama."""
+    if llm_url:
+        return {"base_url": llm_url, "model": llm_model or DEFAULT_MODEL}
+    if not local and gemini_key():
+        return {
+            "base_url": GEMINI_URL,
+            "model": llm_model or GEMINI_MODEL,
+            "api_key": gemini_key(),
+            "extra": dict(GEMINI_EXTRA),
+        }
+    return {"base_url": DEFAULT_URL, "model": llm_model or DEFAULT_MODEL}
+
+
+def resolve_voices(local: bool, host: Optional[str], cohost: Optional[str]) -> tuple[str, str]:
+    cloud = use_cloud_voices(local)
+    return (
+        host or (CLOUD_HOST if cloud else DEFAULT_HOST),
+        cohost or (CLOUD_COHOST if cloud else DEFAULT_COHOST),
+    )
+
+
+def describe(engines: set[str]) -> str:
+    return " + ".join(
+        "ElevenLabs (cloud)" if e == "elevenlabs" else f"{e} (local)" for e in sorted(engines)
+    )
 
 
 def read_source(source: Path) -> str:
@@ -82,13 +124,16 @@ DATE_HELP = "Date announced in the intro (YYYY-MM-DD), defaults to today."
 SHOW_HELP = "Show name announced in the intro and outro (defaults to the locale's)."
 JINGLE_HELP = "Jingle played at the start, between sections and at the end."
 BED_HELP = "Music bed looped under the voice(s), ducked automatically."
+LOCAL_HELP = "Stay offline: local voices (and local LLM) even if API keys are set."
 
 
 @app.command()
 def generate(
     source: Path = typer.Argument(..., help=SOURCE_HELP),
     output: Optional[Path] = typer.Option(None, "-o", "--output", help=OUTPUT_HELP),
-    engine: str = typer.Option("supertonic", "-e", "--engine", help=" | ".join(ENGINES)),
+    engine: Optional[str] = typer.Option(
+        None, "-e", "--engine", help=f"{' | '.join(ENGINES)} (default: elevenlabs if keyed)."
+    ),
     voice: Optional[str] = typer.Option(
         None, "-v", "--voice", help="Voice (see `podcast voices`)."
     ),
@@ -100,8 +145,11 @@ def generate(
     intro: bool = typer.Option(True, "--intro/--no-intro", help="Add intro, contents and outro."),
     jingle: Optional[Path] = typer.Option(None, help=JINGLE_HELP),
     bed: Optional[Path] = typer.Option(None, help=BED_HELP),
+    local: bool = typer.Option(False, "--local", help=LOCAL_HELP),
 ):
     """Read a text with a single voice."""
+    engine = engine or ("elevenlabs" if use_cloud_voices(local) else "supertonic")
+    console.print(f"Voice: {describe({engine})}")
     day = dt.date.fromisoformat(date) if date else dt.date.today()
     output = output or Path("out") / f"edition-{day.isoformat()}.mp3"
     doc = script.parse_markdown(read_source(source))
@@ -137,10 +185,12 @@ def generate(
     print_summary(output, started)
 
 
-HOST_HELP = "Host: Name=engine:voice."
-COHOST_HELP = "Co-host: Name=engine:voice."
+HOST_HELP = "Host: Name=engine:voice (default: ElevenLabs if keyed, else Piper)."
+COHOST_HELP = "Co-host: Name=engine:voice (default: ElevenLabs if keyed, else Supertonic)."
 DEFAULT_HOST = "Claire=piper:fr_FR-siwis-medium"
 DEFAULT_COHOST = "Marc=supertonic:M3"
+CLOUD_HOST = "Claire=elevenlabs:Matilda"
+CLOUD_COHOST = "Marc=elevenlabs:Brian"
 GAP_HELP = "Silence between turns of different voices, in ms."
 MIX_HELP = "Shared voice processing (--no-mix: raw, for comparison)."
 
@@ -167,6 +217,7 @@ def speak_dialogue(
 
     speakers = {s.name: s for s in (dlg.Speaker.parse(host), dlg.Speaker.parse(cohost))}
     host_name, cohost_name = list(speakers)
+    console.print(f"Voices: {describe({s.engine for s in speakers.values()})}")
     doc = dlg.parse_dialogue(script_text, list(speakers))
     paragraphs = dlg.build_dialogue_edition(
         doc, day, host_name, cohost_name, show=show, intro=intro, lang=lang
@@ -207,8 +258,8 @@ def speak_dialogue(
 def dialogue(
     source: Path = typer.Argument(..., help="Tagged script ('Claire: …') or plain Markdown."),
     output: Optional[Path] = typer.Option(None, "-o", "--output", help=OUTPUT_HELP),
-    host: str = typer.Option(DEFAULT_HOST, help=HOST_HELP),
-    cohost: str = typer.Option(DEFAULT_COHOST, help=COHOST_HELP),
+    host: Optional[str] = typer.Option(None, help=HOST_HELP),
+    cohost: Optional[str] = typer.Option(None, help=COHOST_HELP),
     steps: int = typer.Option(8, help="Supertonic synthesis steps."),
     lang: str = typer.Option("fr", help="Spoken language."),
     date: Optional[str] = typer.Option(None, help=DATE_HELP),
@@ -218,8 +269,10 @@ def dialogue(
     bed: Optional[Path] = typer.Option(None, help=BED_HELP),
     gap: int = typer.Option(300, help=GAP_HELP),
     mix: bool = typer.Option(True, "--mix/--no-mix", help=MIX_HELP),
+    local: bool = typer.Option(False, "--local", help=LOCAL_HELP),
 ):
     """Read a two-voice script (or let the hosts take turns on sections), on one track."""
+    host, cohost = resolve_voices(local, host, cohost)
     day = dt.date.fromisoformat(date) if date else dt.date.today()
     output = output or Path("out") / f"dialogue-{day.isoformat()}.mp3"
     started = time.perf_counter()
@@ -243,10 +296,14 @@ def create(
     script_only: bool = typer.Option(
         False, "--script-only", help="Only write the script (to review/edit), no audio."
     ),
-    llm_model: str = typer.Option(DEFAULT_MODEL, help="Model name on the LLM server."),
-    llm_url: str = typer.Option(DEFAULT_URL, help="OpenAI-compatible API base URL."),
-    host: str = typer.Option(DEFAULT_HOST, help=HOST_HELP),
-    cohost: str = typer.Option(DEFAULT_COHOST, help=COHOST_HELP),
+    llm_model: Optional[str] = typer.Option(
+        None, help=f"Model name (default: {GEMINI_MODEL} with a Gemini key, else {DEFAULT_MODEL})."
+    ),
+    llm_url: Optional[str] = typer.Option(
+        None, help="OpenAI-compatible API base URL (default: Gemini if keyed, else Ollama)."
+    ),
+    host: Optional[str] = typer.Option(None, help=HOST_HELP),
+    cohost: Optional[str] = typer.Option(None, help=COHOST_HELP),
     steps: int = typer.Option(8, help="Supertonic synthesis steps."),
     lang: str = typer.Option("fr", help="Spoken language."),
     date: Optional[str] = typer.Option(None, help=DATE_HELP),
@@ -255,8 +312,9 @@ def create(
     bed: Optional[Path] = typer.Option(None, help=BED_HELP),
     gap: int = typer.Option(300, help=GAP_HELP),
     mix: bool = typer.Option(True, "--mix/--no-mix", help=MIX_HELP),
+    local: bool = typer.Option(False, "--local", help=LOCAL_HELP),
 ):
-    """Write a morning-show conversation from your articles with a local LLM, then voice it."""
+    """Write a morning-show conversation from your articles with an LLM, then voice it."""
     from . import writer
     from .dialogue import Speaker
     from .llm import LLMClient, LLMError
@@ -265,6 +323,7 @@ def create(
     day = dt.date.fromisoformat(date) if date else dt.date.today()
     output = output or Path("out") / f"matinale-{day.isoformat()}.mp3"
     script_path = output.with_suffix(".script.md")
+    host, cohost = resolve_voices(local, host, cohost)
     started = time.perf_counter()
 
     try:
@@ -275,7 +334,9 @@ def create(
         note = " [yellow](truncated)[/]" if s.truncated else ""
         console.print(f"• {s.title} — {s.words} words{note}")
 
-    client = LLMClient(base_url=llm_url, model=llm_model)
+    client = LLMClient(**resolve_writer(local, llm_url, llm_model))
+    where = "local" if client.is_local() else "cloud"
+    console.print(f"Writer: {client.model} ({where})")
     settings = writer.Settings(
         host=Speaker.parse(host).name,
         cohost=Speaker.parse(cohost).name,
@@ -318,7 +379,10 @@ def create(
 @app.command()
 def voices(engine: str = typer.Option("supertonic", "-e", "--engine")):
     """List available voices."""
-    if engine == "supertonic":
+    if engine == "elevenlabs":
+        names = make_engine(engine, None, None, 5).voices()
+        console.print("ElevenLabs (all multilingual, French included): " + ", ".join(names))
+    elif engine == "supertonic":
         from .engines.supertonic_engine import VOICES
 
         console.print("Supertonic 3 (all multilingual, French included): " + ", ".join(VOICES))

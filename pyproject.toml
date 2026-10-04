@@ -1,13 +1,13 @@
 [project]
 name = "text-to-podcast"
 version = "0.2.0"
-description = "Turn a text into a French 'morning edition' podcast, one or two voices, fully local on CPU"
+description = "Turn a text into a French 'morning edition' podcast, one or two voices, with Gemini and ElevenLabs or fully local on CPU"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 authors = [{ name = "Vincent Ferreira" }]
 requires-python = ">=3.10,<3.14"
-keywords = ["tts", "text-to-speech", "podcast", "french", "llm", "ollama", "onnx", "piper", "supertonic"]
+keywords = ["tts", "text-to-speech", "podcast", "french", "llm", "gemini", "elevenlabs", "ollama", "onnx", "piper", "supertonic"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",

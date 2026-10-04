@@ -34,6 +34,8 @@ VOICE_CHAINS = {
     # Supertonic is very bright: soften the top end to match Piper
     "supertonic": "highpass=f=80,lowpass=f=13000,equalizer=f=3000:t=q:w=1.2:g=1",
     "kokoro": "highpass=f=80,equalizer=f=3000:t=q:w=1.2:g=1.5",
+    # ElevenLabs is already clean and full: just the shared low cut
+    "elevenlabs": "highpass=f=80",
 }
 BUS_CHAIN = (
     "acompressor=threshold=-21dB:ratio=2.5:attack=8:release=180:makeup=2,"
