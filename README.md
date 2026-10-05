@@ -27,35 +27,27 @@ Two ways to run it:
 
 You'll need Linux, Python 3.10+, [uv](https://docs.astral.sh/uv/) and ffmpeg.
 
+1. Install project
 ```bash
-# 1. text-to-podcast
 git clone https://github.com/VincentFerreira/text-to-podcast.git
 cd text-to-podcast
 uv sync
+```
 
-# 2. Your API keys, in a .env file (or as environment variables)
-cat > .env <<'KEYS'
+
+2. Put your API keys in a .env file
+```bash
 GEMINI_API_KEY=...
 ELEVEN_LABS_API_KEY=...
-KEYS
+```
 
-# 3. Your first episode
+
+3. Create your first episode
+```bash
 uv run podcast create samples/fr/veille_tech.md
 ```
 
 You get `out/matinale-<date>.mp3` and its script (`.script.md`).
-
-Getting the keys:
-
-- **Gemini**: create one for free in [Google AI Studio](https://aistudio.google.com/apikey).
-- **ElevenLabs**: create an account on [elevenlabs.io](https://elevenlabs.io), then an API key with the *Text to Speech* permission.
-
-Each key works on its own: with only the Gemini key, the show is written in the cloud and voiced locally, and the other way around.
-
-Good to know:
-
-- Your articles are sent to Google, and the script to ElevenLabs.
-- ElevenLabs counts about one credit per character: a 5-minute episode uses about 5,000. Check how many your plan includes each month.
 
 It also runs well in the background, for instance every morning:
 
